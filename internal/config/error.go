@@ -1,10 +1,17 @@
 package config
 
-type ErrConfig struct {
-	Errors   []error
+type ConfigErr struct {
+	Errs []error
+}
+
+func (e ConfigErr) Error() string {
+	return "config error"
+}
+
+type ConfigWarnigs struct {
 	Warnings []error
 }
 
-func (e ErrConfig) Error() string {
-	return "error occured while loading config"
+func (e ConfigWarnigs) Error() string {
+	return "config warnings"
 }

@@ -10,22 +10,26 @@ import (
 )
 
 func main() {
-	cfg, err := config.LoadConfig()
+	cfg, err, warnings := config.LoadConfig()
 
 	if err != nil {
-		if err, ok := err.(*config.ErrConfig); ok {
-			if len(err.Errors) > 0 {
-				for _, err := range err.Errors {
-					log.Println("validation error:", err)
-				}
-				os.Exit(1)
+		if err, ok := err.(config.ConfigErr); ok {
+			for _, err := range err.Errs {
+				log.Println("validation error:", err)
 			}
+		} else {
+			log.Println(err)
+		}
+		os.Exit(1)
+	}
 
-			if len(err.Warnings) > 0 {
-				for _, err := range err.Warnings {
-					log.Println("warning:", err)
-				}
+	if warnings != nil {
+		if w, ok := warnings.(config.ConfigWarnigs); ok {
+			for _, err := range w.Warnings {
+				log.Println("warning:", err)
 			}
+		} else {
+			log.Println(err)
 		}
 	}
 

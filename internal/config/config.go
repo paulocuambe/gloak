@@ -60,39 +60,32 @@ func (d *DatabaseConfig) DSN() string {
 	return fmt.Sprintf("host=%s port=%d dbname=%s user=%s password=%s sslmode=%s application_name=%s", d.Hostname, d.Port, d.DBName, d.User, d.Password, d.SSLMode, d.DBName)
 }
 
-func LoadConfig() (*AppConfig, error) {
+// loads config and returns the config, errors and warnings
+func LoadConfig() (*AppConfig, error, error) {
 	data, err := conf.Files.ReadFile("app.ini")
 
 	if err != nil {
-		return nil, err
+		return nil, err, nil
 	}
 
 	cfg, err := ini.Load(data)
 	if err != nil {
-		return nil, err
+		return nil, err, nil
 	}
 
 	var conf AppConfig
 	err = cfg.MapTo(&conf)
 	if err != nil {
-		return nil, err
+		return nil, err, nil
 	}
 
-	// return error if there are validation errors
-	// return error and config if there are only warnings
-	err, b := validate(&conf)
-	if err != nil {
-		if b {
-			return nil, err
-		}
-		return &conf, err
-	}
+	errs, warnings := validate(&conf)
 
-	return &conf, nil
+	return &conf, errs, warnings
 }
 
 // returns errors and warnings and a bolean denoting if has errors not just warnings
-func validate(cfg *AppConfig) (*ErrConfig, bool) {
+func validate(cfg *AppConfig) (error, error) {
 	errs := make([]error, 0, 1)
 	warnings := make([]error, 0, 1)
 
@@ -185,15 +178,23 @@ func validate(cfg *AppConfig) (*ErrConfig, bool) {
 				}
 			}
 			// create the db file
-			if _, err := os.Create(cfg.DatabaseConfig.DSN()); err != nil {
+			if f, err := os.Create(cfg.DatabaseConfig.DSN()); err != nil {
 				errs = append(errs, fmt.Errorf("'database.path' %v can't be written to", p))
+			} else {
+				defer f.Close()
 			}
 		}
 	}
 
-	if len(warnings) == 0 && len(errs) == 0 {
-		return nil, true
+	var e error
+	if len(errs) > 0 {
+		e = ConfigErr{Errs: errs}
 	}
 
-	return &ErrConfig{Errors: errs, Warnings: warnings}, len(errs) > 0
+	var w error
+	if len(warnings) > 0 {
+		w = ConfigWarnigs{Warnings: warnings}
+	}
+
+	return e, w
 }

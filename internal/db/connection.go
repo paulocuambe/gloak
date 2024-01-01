@@ -24,7 +24,6 @@ func initiateConnection(cfg *config.DatabaseConfig) (*sql.DB, error) {
 	return db, nil
 }
 
-// WIP - database config
 func ProvideDBConnection(cfg *config.DatabaseConfig) (*sql.DB, error) {
 	db, err := initiateConnection(cfg)
 
