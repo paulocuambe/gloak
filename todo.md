@@ -1,0 +1,17 @@
+- [X] read config from a file
+- [X] create the http server
+- [X] start the http server on a port
+- [X] initiate connection with a postgres database
+- [X] configure sqlite connection if no database config is defined
+- [ ] use sqlite for integration testing and local development when needed
+- [ ] run migrations if there are any
+    - [ ] create the master realm if not created yet
+    - [ ] create the admin user with the necessary roles if not created yet
+    - [ ] migrations must contemplate postgres and sqlite3 for local development and testing
+- [ ] strucured logging
+- [ ] be able to reset the password of the admin via local curl commands inside the server
+- [ ] document the architecture
+- [ ] setup build script
+- [ ] Setup build pipeline
+- [ ] implement unit tests for config loading
+
