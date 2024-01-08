@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -61,22 +62,22 @@ func (d *DatabaseConfig) DSN() string {
 }
 
 // loads config and returns the config, errors and warnings
-func LoadConfig() (*AppConfig, error, error) {
+func LoadConfig() (*AppConfig, []error, []error) {
 	data, err := conf.Files.ReadFile("app.ini")
 
 	if err != nil {
-		return nil, err, nil
+		return nil, []error{err}, nil
 	}
 
 	cfg, err := ini.Load(data)
 	if err != nil {
-		return nil, err, nil
+		return nil, []error{err}, nil
 	}
 
 	var conf AppConfig
 	err = cfg.MapTo(&conf)
 	if err != nil {
-		return nil, err, nil
+		return nil, []error{err}, nil
 	}
 
 	errs, warnings := validate(&conf)
@@ -85,12 +86,12 @@ func LoadConfig() (*AppConfig, error, error) {
 }
 
 // returns errors and warnings and a bolean denoting if has errors not just warnings
-func validate(cfg *AppConfig) (error, error) {
+func validate(cfg *AppConfig) ([]error, []error) {
 	errs := make([]error, 0, 1)
 	warnings := make([]error, 0, 1)
 
 	if cfg.Name == "" {
-		errs = append(errs, errors.New("'app_name' should not be empty"))
+		errs = append(errs, errors.New("'app_name' can't be empty"))
 	}
 
 	if cfg.Version == "" {
@@ -103,6 +104,7 @@ func validate(cfg *AppConfig) (error, error) {
 
 	if cfg.HttpServerConfig == nil {
 		warnings = append(warnings, errors.New("'http_server' configuration is empty so the server will be started on the default configurations"))
+		cfg.HttpServerConfig = &HttpServerConfig{}
 	}
 
 	if cfg.HttpServerConfig.Hostname == "" {
@@ -117,84 +119,67 @@ func validate(cfg *AppConfig) (error, error) {
 
 	if cfg.DatabaseConfig == nil {
 		errs = append(errs, errors.New("'database' configuration can't be empty"))
-	}
-
-	if cfg.DatabaseConfig.DBName == "" {
-		errs = append(errs, errors.New("'database.name' can't be empty"))
-	}
-
-	if cfg.DatabaseConfig.Driver == "" {
-		errs = append(errs, errors.New("'database.driver' can't be empty"))
-	}
-
-	if cfg.DatabaseConfig.Driver != "" {
-		if cfg.DatabaseConfig.Driver != "postgres" && cfg.DatabaseConfig.Driver != "sqlite3" {
-			errs = append(errs, errors.New("'database.driver' only allows the following values: [postgres, sqlite3]"))
-		}
-	}
-
-	if cfg.DatabaseConfig.Driver == "postgres" {
-		if cfg.DatabaseConfig.Hostname == "" {
-			errs = append(errs, errors.New("'database.hostname' can't be empty"))
+	} else {
+		if cfg.DatabaseConfig.DBName == "" {
+			errs = append(errs, errors.New("'database.name' can't be empty"))
 		}
 
-		if cfg.DatabaseConfig.Port == 0 {
-			warnings = append(warnings, errors.New("'database.port' can't be empty or 0"))
-		}
+		if cfg.DatabaseConfig.Driver == "" {
+			errs = append(errs, errors.New("'database.driver' can't be empty"))
+		} else if cfg.DatabaseConfig.Driver == "postgres" {
+			if cfg.DatabaseConfig.Hostname == "" {
+				errs = append(errs, errors.New("'database.hostname' can't be empty"))
+			}
 
-		if cfg.DatabaseConfig.User == "" {
-			errs = append(errs, errors.New("'database.user' can't be empty"))
-		}
+			if cfg.DatabaseConfig.Port == 0 {
+				warnings = append(warnings, errors.New("'database.port' is empty or 0 so it will default to: 5432"))
+				cfg.DatabaseConfig.Port = 5432
+			}
 
-		if cfg.DatabaseConfig.Password == "" {
-			errs = append(errs, errors.New("'database.password' can't be empty"))
-		}
+			if cfg.DatabaseConfig.User == "" {
+				errs = append(errs, errors.New("'database.user' can't be empty"))
+			}
 
-		if cfg.DatabaseConfig.SSLMode == "" {
-			cfg.DatabaseConfig.SSLMode = "allow"
-			warnings = append(warnings, errors.New("'database.sslmode' is empty so it will default to allow"))
-		}
-	}
+			if cfg.DatabaseConfig.Password == "" {
+				errs = append(errs, errors.New("'database.password' can't be empty"))
+			}
 
-	if cfg.DatabaseConfig.Driver == "sqlite3" {
-		// if path is empty while using sqlite3 it will default to the path were the program is being executed in
-		if cfg.DatabaseConfig.Path == "" {
-			p, _ := os.Executable()
-			p = filepath.Dir(p)
-			cfg.DatabaseConfig.Path = p
-			warnings = append(warnings, fmt.Errorf("'database.path' is empty so it will default to: %v", p))
-		}
+			if cfg.DatabaseConfig.SSLMode == "" {
+				cfg.DatabaseConfig.SSLMode = "allow"
+				warnings = append(warnings, errors.New("'database.sslmode' is empty so it will default to: 'allow'"))
+			}
+		} else if cfg.DatabaseConfig.Driver == "sqlite3" {
+			// if path is empty while using sqlite3 it will default to the path were the program is being executed in
+			if cfg.DatabaseConfig.Path == "" {
+				p, _ := os.Executable()
+				p = filepath.Dir(p)
+				cfg.DatabaseConfig.Path = p
+				warnings = append(warnings, fmt.Errorf("'database.path' is empty so it will default to: '%v'", p))
+			}
 
-		if p := cfg.DatabaseConfig.Path; p != "" {
-			_, err := os.Stat(p)
+			if p := cfg.DatabaseConfig.Path; p != "" {
+				f, err := os.Stat(p)
 
-			if err != nil {
-				if errors.Is(err, os.ErrExist) {
-					errs = append(errs, fmt.Errorf("'database.path' %v provided does not exist", p))
-				} else if errors.Is(err, os.ErrPermission) {
-					errs = append(errs, fmt.Errorf("'database.path' %v not enough permissions to read from this location", p))
-				} else {
-					warnings = append(warnings, fmt.Errorf("'database.path' %v: %w", p, err))
+				if err != nil {
+					if _, ok := err.(*fs.PathError); errors.Is(err, os.ErrExist) || ok {
+						errs = append(errs, fmt.Errorf("'database.path' %v provided does not exist", p))
+					} else if errors.Is(err, os.ErrPermission) {
+						errs = append(errs, fmt.Errorf("'database.path' %v not enough permissions to read from this location", p))
+					} else {
+						warnings = append(warnings, fmt.Errorf("'database.path' %v: %w", p, err))
+					}
+				} else if !f.IsDir() {
+					errs = append(errs, fmt.Errorf("'database.path' %v is not a directory", p))
+
+					// bitwise operation to determine if the directory has enough permissions to write on the dir
+				} else if f.Mode().Perm()&0060 != 0060 {
+					errs = append(errs, fmt.Errorf("'database.path' %v not enough permissions to read and write in this directory", p))
 				}
 			}
-			// create the db file
-			if f, err := os.Create(cfg.DatabaseConfig.DSN()); err != nil {
-				errs = append(errs, fmt.Errorf("'database.path' %v can't be written to", p))
-			} else {
-				defer f.Close()
-			}
+		} else {
+			errs = append(errs, fmt.Errorf("'database.driver' %v not supported, only [postgres, sqlite3] are supported", cfg.DatabaseConfig.Driver))
 		}
 	}
 
-	var e error
-	if len(errs) > 0 {
-		e = ConfigErr{Errs: errs}
-	}
-
-	var w error
-	if len(warnings) > 0 {
-		w = ConfigWarnigs{Warnings: warnings}
-	}
-
-	return e, w
+	return errs, warnings
 }
