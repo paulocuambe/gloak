@@ -102,7 +102,7 @@ func TestValidate(t *testing.T) {
 				},
 			},
 			errors: []string{
-				fmt.Sprintf("'database.path' %v provided does not exists", "/path/do/not/exist-for/sure"),
+				fmt.Sprintf("'database.path' %v provided does not exist", "/path/do/not/exist-for/sure"),
 			},
 			warnings: []string{},
 		},

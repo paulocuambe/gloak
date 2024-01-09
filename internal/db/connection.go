@@ -9,7 +9,11 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// decide if sqlite/postgres
+type DB struct {
+	Cfg *config.DatabaseConfig
+	DB  *sql.DB
+}
+
 func initiateConnection(cfg *config.DatabaseConfig) (*sql.DB, error) {
 	db, err := sql.Open(cfg.Driver.GetName(), cfg.DSN())
 
@@ -24,12 +28,12 @@ func initiateConnection(cfg *config.DatabaseConfig) (*sql.DB, error) {
 	return db, nil
 }
 
-func ProvideDBConnection(cfg *config.DatabaseConfig) (*sql.DB, error) {
+func ProvideDBConnection(cfg *config.DatabaseConfig) (*DB, error) {
 	db, err := initiateConnection(cfg)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return db, err
+	return &DB{DB: db, Cfg: cfg}, err
 }

@@ -13,5 +13,5 @@
 - [ ] document the architecture
 - [ ] setup build script
 - [ ] Setup build pipeline
-- [ ] implement unit tests for config loading
+- [X] implement unit tests for config loading
 

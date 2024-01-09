@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/paulocuambe/gloak/internal/config"
@@ -24,7 +25,8 @@ func main() {
 	}
 
 	conn, err := db.ProvideDBConnection(cfg.DatabaseConfig)
-	defer conn.Close()
+	conn.RunMigrations(context.Background())
+	defer conn.DB.Close()
 
 	if err != nil {
 		log.Fatalf("could not start database: %v\n", err)

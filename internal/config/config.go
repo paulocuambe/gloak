@@ -49,6 +49,14 @@ type DatabaseConfig struct {
 	SSLMode  string     `ini:"sslmode"`
 }
 
+func (d *DatabaseConfig) IsPostgres() bool {
+	return d.Driver == "postgres"
+}
+
+func (d *DatabaseConfig) IsSqlite3() bool {
+	return d.Driver == "sqlite3"
+}
+
 // returns the db dsn
 // if the db configuration is not defined or if its sqlite,
 // create a local db file in the execution path
