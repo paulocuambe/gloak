@@ -1,0 +1,1 @@
+docker run --name gloak -p 5431:5432 -e POSTGRES_DB=gloak -e POSTGRES_USER=gloak -e POSTGRES_PASSWORD=123456 -d postgres

@@ -2,7 +2,6 @@ package httpserver
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
@@ -30,13 +29,20 @@ func (hs *HttpServer) GetRealms(w http.ResponseWriter, r *http.Request, p httpro
 }
 
 func (hs *HttpServer) CreateRealm(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	_, err := hs.realmService.Create(r.Context(), &models.CreateRealmCommand{Id: "dummy-data", Name: "master"})
+	realm, err := hs.realmService.Create(r.Context(), &models.CreateRealmCommand{Id: "dummy-data-5", Name: "internal5"})
+
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("bad request"))
-		log.Println("there was an error while creating the realm: ", err)
 		return
 	}
 
-	w.Write([]byte("you just created a realm"))
+	d, err := json.Marshal(realm)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("an unknown error occurred"))
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(d))
 }

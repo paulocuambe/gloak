@@ -25,11 +25,14 @@ func main() {
 	}
 
 	conn, err := db.ProvideDBConnection(cfg.DatabaseConfig)
-	conn.RunMigrations(context.Background())
 	defer conn.DB.Close()
-
 	if err != nil {
 		log.Fatalf("could not start database: %v\n", err)
+	}
+
+	err = conn.RunMigrations(context.Background())
+	if err != nil {
+		log.Fatalf("error while running migrations: %v\n", err)
 	}
 
 	server := httpserver.ProvideHttpServer(cfg, conn)

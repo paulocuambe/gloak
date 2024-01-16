@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"log"
 )
 
@@ -10,12 +11,10 @@ const (
 )
 
 func (d *DB) RunMigrations(ctx context.Context) error {
-	log.Println("run migrations")
+	log.Println("running migrations")
 	err := d.runRealmMigrations(ctx)
 	if err != nil {
-		log.Println("ooohhh")
-		log.Println(err)
-		return err
+		return fmt.Errorf("realm migrations: %w", err)
 	}
 	log.Println("finished running migrations")
 
