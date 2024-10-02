@@ -29,6 +29,24 @@ func (s *service) GetRealmByID(ctx context.Context, id string) (*models.Realm, e
 	}
 
 	realm, err := s.get(tx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return realm, tx.Commit()
+}
+
+func (s *service) GetRealms(ctx context.Context) ([]*models.Realm, error) {
+	tx, err := s.DB().Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	realm, err := s.getAll(tx)
+	if err != nil {
+		return nil, err
+	}
+
 	return realm, tx.Commit()
 }
 
@@ -78,16 +96,14 @@ func (s *service) get(tx *sql.Tx, id string) (*models.Realm, error) {
 	}
 
 	var realm models.Realm
-
-	err := r.Scan(&realm.Id, &realm.Name, &realm.CreatedAt, &realm.UpdatedAt)
-	if err != nil {
+	if err := r.Scan(&realm.Id, &realm.Name, &realm.CreatedAt, &realm.UpdatedAt); err != nil {
 		return nil, err
 	}
 
 	return &realm, nil
 }
 
-func (s *service) getAll(tx *sql.Tx, id string) ([]*models.Realm, error) {
+func (s *service) getAll(tx *sql.Tx) ([]*models.Realm, error) {
 	query := "SELECT id, name, created_at, updated_at from realms"
 	if s.store.Cfg.IsSqlite3() {
 		query = "SELECT id, name, created_at, updated_at from realms"

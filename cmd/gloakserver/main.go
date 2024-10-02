@@ -25,9 +25,10 @@ func main() {
 	}
 
 	conn, err := db.ProvideDBConnection(cfg.DatabaseConfig)
-	defer conn.DB.Close()
 	if err != nil {
 		log.Fatalf("could not start database: %v\n", err)
+	} else {
+		defer conn.DB.Close()
 	}
 
 	err = conn.RunMigrations(context.Background())
